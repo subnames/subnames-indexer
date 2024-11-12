@@ -13,3 +13,30 @@ type NameRegistered @entity {
   owner: Account!
   expires: BigInt!
 }
+
+type OwnershipTransferred @entity {
+  id: ID!
+  blockNumber: Int!
+  timestamp: DateTime!
+  txHash: String!
+  oldOwner: Account!
+  newOwner: Account!
+}
+
+type NameRenewed @entity {
+  id: ID!
+  blockNumber: Int!
+  timestamp: DateTime!
+  txHash: String!
+  name: String!
+  label: Bytes!
+  expires: BigInt!
+}
+
+type Subname @entity {
+  id: ID!
+  name: String!
+  label: Bytes!
+  owner: Account!
+  expires: BigInt!
+}
