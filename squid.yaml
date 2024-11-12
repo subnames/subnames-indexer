@@ -1,7 +1,7 @@
 manifestVersion: subsquid.io/v0.1
 name: subnames-indexer
 version: 1
-description: 'Basic example of processing evm logs '
+description: 'processing evm logs for subnames events'
 build: 
 deploy:
   addons:

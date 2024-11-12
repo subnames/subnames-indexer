@@ -7,14 +7,14 @@ import {
     Transaction as _Transaction,
 } from '@subsquid/evm-processor'
 import {Store} from '@subsquid/typeorm-store'
-import * as erc20 from './abi/erc20'
+import * as controller from './abi/RegistrarController'
 
 export const CONTRACT_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
 
 export const processor = new EvmBatchProcessor()
-    .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
+    // .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
     .setRpcEndpoint({
-        url: 'https://eth-mainnet.public.blastapi.io',
+        url: 'https://koi-rpc.darwinia.network',
         rateLimit: 10
     })
     .setFinalityConfirmation(75)
@@ -30,7 +30,7 @@ export const processor = new EvmBatchProcessor()
     .addLog({
         range: {from: 6_082_465},
         address: [CONTRACT_ADDRESS],
-        topic0: [erc20.events.Transfer.topic],
+        topic0: [controller.events.NameRegistered.topic],
         transaction: true,
     })
 

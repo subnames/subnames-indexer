@@ -1,88 +1,85 @@
 import {In} from 'typeorm'
 import {assertNotNull} from '@subsquid/evm-processor'
 import {TypeormDatabase} from '@subsquid/typeorm-store'
-import * as erc20 from './abi/erc20'
-import {Account, Transfer} from './model'
+import * as controller from './abi/RegistrarController'
+import {Account, NameRegistered} from './model'
 import {Block, CONTRACT_ADDRESS, Context, Log, Transaction, processor} from './processor'
 
 processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
-    let transfers: TransferEvent[] = []
+    let nameRegistered: NameRegisteredEvent[] = []
 
     for (let block of ctx.blocks) {
         for (let log of block.logs) {
-            if (log.address === CONTRACT_ADDRESS && log.topics[0] === erc20.events.Transfer.topic) {
-                transfers.push(getTransfer(ctx, log))
+            if (log.address === CONTRACT_ADDRESS && log.topics[0] === controller.events.NameRegistered.topic) {
+                nameRegistered.push(getNameRegistered(ctx, log))
             }
         }
     }
 
-    await processTransfers(ctx, transfers)
+    await processNameRegistered(ctx, nameRegistered)
 })
 
-interface TransferEvent {
+interface NameRegisteredEvent {
     id: string
     block: Block
     transaction: Transaction
-    from: string
-    to: string
-    amount: bigint
+    name: string
+    label: string
+    owner: string
+    expires: bigint
 }
 
-function getTransfer(ctx: Context, log: Log): TransferEvent {
-    let event = erc20.events.Transfer.decode(log)
-
-    let from = event.from.toLowerCase()
-    let to = event.to.toLowerCase()
-    let amount = event.value
+function getNameRegistered(ctx: Context, log: Log): NameRegisteredEvent {
+    let event = controller.events.NameRegistered.decode(log)
 
     let transaction = assertNotNull(log.transaction, `Missing transaction`)
 
-    ctx.log.debug({block: log.block, txHash: transaction.hash}, `Transfer from ${from} to ${to} amount ${amount}`)
+    ctx.log.debug({block: log.block, txHash: transaction.hash}, `Name registered ${event.name}`)
 
     return {
         id: log.id,
         block: log.block,
         transaction,
-        from,
-        to,
-        amount,
+        name: event.name,
+        label: event.label,
+        owner: event.owner,
+        expires: event.expires,
     }
 }
 
-async function processTransfers(ctx: Context, transfersData: TransferEvent[]) {
+async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegisteredEvent[]) {
     let accountIds = new Set<string>()
-    for (let t of transfersData) {
-        accountIds.add(t.from)
-        accountIds.add(t.to)
+    for (let t of nameRegisteredData) {
+        accountIds.add(t.owner)
     }
 
     let accounts = await ctx.store
         .findBy(Account, {id: In([...accountIds])})
         .then((q) => new Map(q.map((i) => [i.id, i])))
 
-    let transfers: Transfer[] = []
+    let nameRegisteredList: NameRegistered[] = []
 
-    for (let t of transfersData) {
-        let {id, block, transaction, amount} = t
+    for (let t of nameRegisteredData) {
+        let {id, block, transaction, name, label, owner, expires} = t
 
-        let from = getAccount(accounts, t.from)
-        let to = getAccount(accounts, t.to)
+        let account = getAccount(accounts, owner)
 
-        transfers.push(
-            new Transfer({
+        nameRegisteredList.push(
+            new NameRegistered({
                 id,
                 blockNumber: block.height,
                 timestamp: new Date(block.timestamp),
                 txHash: transaction.hash,
-                from,
-                to,
-                amount,
+                name,
+                label: new TextEncoder().encode(label),
+                owner: account,
+                expires,
             })
         )
     }
 
     await ctx.store.upsert(Array.from(accounts.values()))
-    await ctx.store.insert(transfers)
+    await ctx.store.insert(nameRegisteredList)
 }
 
 function getAccount(m: Map<string, Account>, id: string): Account {
