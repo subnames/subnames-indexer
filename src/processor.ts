@@ -9,15 +9,15 @@ import {
 import {Store} from '@subsquid/typeorm-store'
 import * as controller from './abi/RegistrarController'
 
-export const CONTRACT_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+export const CONTRACT_ADDRESS = '0x50d634E43F5aD7748cf2860760b887655524B593'
 
 export const processor = new EvmBatchProcessor()
     // .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
     .setRpcEndpoint({
         url: 'https://koi-rpc.darwinia.network',
-        rateLimit: 10
+        rateLimit: 2
     })
-    .setFinalityConfirmation(75)
+    .setFinalityConfirmation(35)
     .setFields({
         log: {
             topics: true,
@@ -28,14 +28,14 @@ export const processor = new EvmBatchProcessor()
         },
     })
     .addLog({
-        range: {from: 6_082_465},
+        range: {from: 1705997},
         address: [CONTRACT_ADDRESS],
         topic0: [controller.events.NameRegistered.topic],
         transaction: true,
     })
-
 export type Fields = EvmBatchProcessorFields<typeof processor>
 export type Context = DataHandlerContext<Store, Fields>
 export type Block = BlockHeader<Fields>
 export type Log = _Log<Fields>
 export type Transaction = _Transaction<Fields>
+
