@@ -6,17 +6,16 @@ import {Account, NameRegistered} from './model'
 import {Block, CONTRACT_ADDRESS, Context, Log, Transaction, processor} from './processor'
 
 processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
-    let nameRegistered: NameRegisteredEvent[] = []
-
+    let nameRegisteredList: NameRegisteredEvent[] = []
     for (let block of ctx.blocks) {
         for (let log of block.logs) {
-            if (log.address === CONTRACT_ADDRESS && log.topics[0] === controller.events.NameRegistered.topic) {
-                nameRegistered.push(getNameRegistered(ctx, log))
+            if (log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() && log.topics[0].toLowerCase() === controller.events.NameRegistered.topic.toLowerCase()) {
+                nameRegisteredList.push(getNameRegistered(ctx, log))
             }
         }
     }
 
-    await processNameRegistered(ctx, nameRegistered)
+    await processNameRegistered(ctx, nameRegisteredList)
 })
 
 interface NameRegisteredEvent {

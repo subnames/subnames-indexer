@@ -11,11 +11,13 @@ import * as controller from './abi/RegistrarController'
 
 export const CONTRACT_ADDRESS = '0x50d634E43F5aD7748cf2860760b887655524B593'
 
+console.log(CONTRACT_ADDRESS)
+console.log(controller.events.NameRegistered.topic)
 export const processor = new EvmBatchProcessor()
     // .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
     .setRpcEndpoint({
         url: 'https://koi-rpc.darwinia.network',
-        rateLimit: 2
+        rateLimit: 10
     })
     .setFinalityConfirmation(35)
     .setFields({
@@ -28,7 +30,7 @@ export const processor = new EvmBatchProcessor()
         },
     })
     .addLog({
-        range: {from: 1705997},
+        range: {from: 1800370},
         address: [CONTRACT_ADDRESS],
         topic0: [controller.events.NameRegistered.topic],
         transaction: true,
