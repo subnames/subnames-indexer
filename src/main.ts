@@ -61,6 +61,7 @@ async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegis
     for (let t of nameRegisteredData) {
         let {id, block, transaction, name, label, owner, expires} = t
 
+        console.log(label)
         let account = getAccount(accounts, owner)
 
         nameRegisteredList.push(
@@ -70,7 +71,7 @@ async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegis
                 timestamp: new Date(block.timestamp),
                 txHash: transaction.hash,
                 name,
-                label: new TextEncoder().encode(label),
+                label: Buffer.from(label.replace('0x', ''), 'hex'),
                 owner: account,
                 expires,
             })
