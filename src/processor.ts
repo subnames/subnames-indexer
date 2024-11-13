@@ -30,9 +30,13 @@ export const processor = new EvmBatchProcessor()
         },
     })
     .addLog({
-        range: {from: 1800370},
+        range: {from: 1907360},
         address: [CONTRACT_ADDRESS],
-        topic0: [controller.events.NameRegistered.topic],
+        topic0: [
+            controller.events.NameRegistered.topic,
+            controller.events.OwnershipTransferred.topic,
+            controller.events.NameRenewed.topic,
+        ],
         transaction: true,
     })
 export type Fields = EvmBatchProcessorFields<typeof processor>

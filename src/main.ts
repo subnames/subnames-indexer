@@ -11,13 +11,19 @@ processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
     let nameRenewedList: NameRenewedEvent[] = []
 
     for (let block of ctx.blocks) {
+        // console.log(`Processing block ${block.header.height}`)
         for (let log of block.logs) {
-            if (log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() && log.topics[0].toLowerCase() === controller.events.NameRegistered.topic.toLowerCase()) {
-                nameRegisteredList.push(getNameRegistered(ctx, log))
-            } else if (log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() && log.topics[0].toLowerCase() === controller.events.OwnershipTransferred.topic.toLowerCase()) {
-                ownershipTransferredList.push(getOwnershipTransferred(ctx, log))
-            } else if (log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() && log.topics[0].toLowerCase() === controller.events.NameRenewed.topic.toLowerCase()) {
-                nameRenewedList.push(getNameRenewed(ctx, log))
+            if (log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()) {
+                const topic = log.topics[0].toLowerCase()
+                // console.log(`Processing topic ${topic}`)
+                if (topic === controller.events.NameRegistered.topic.toLowerCase()) {
+                    nameRegisteredList.push(getNameRegistered(ctx, log))
+                } else if (topic === controller.events.OwnershipTransferred.topic.toLowerCase()) {
+                    ownershipTransferredList.push(getOwnershipTransferred(ctx, log))
+                } else if (topic === controller.events.NameRenewed.topic.toLowerCase()) {
+                    console.log('NameRenewed')
+                    nameRenewedList.push(getNameRenewed(ctx, log))
+                }
             }
         }
     }
@@ -118,8 +124,8 @@ async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegis
     }
 
     await ctx.store.upsert(Array.from(accounts.values()))
-    await ctx.store.insert(nameRegisteredList)
-    await ctx.store.insert(subnameList)
+    await ctx.store.upsert(nameRegisteredList)
+    await ctx.store.upsert(subnameList)
 }
 
 function getAccount(m: Map<string, Account>, id: string): Account {
@@ -178,7 +184,7 @@ async function processOwnershipTransferred(ctx: Context, ownershipTransferredDat
     }
 
     await ctx.store.upsert(Array.from(accounts.values()))
-    await ctx.store.insert(ownershipTransferredList)
+    await ctx.store.upsert(ownershipTransferredList)
 
     for (let t of ownershipTransferredData) {
         let {oldOwner, newOwner} = t
@@ -233,5 +239,5 @@ async function processNameRenewed(ctx: Context, nameRenewedData: NameRenewedEven
         }
     }
 
-    await ctx.store.insert(nameRenewedList)
+    await ctx.store.upsert(nameRenewedList)
 }
