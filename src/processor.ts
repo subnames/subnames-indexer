@@ -30,7 +30,7 @@ export const processor = new EvmBatchProcessor()
         },
     })
     .addLog({
-        range: {from: 1907360},
+        range: {from: 1800370},
         address: [CONTRACT_ADDRESS],
         topic0: [
             controller.events.NameRegistered.topic,
