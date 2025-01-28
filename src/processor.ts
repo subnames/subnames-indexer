@@ -9,17 +9,17 @@ import {
 import {Store} from '@subsquid/typeorm-store'
 import * as controller from './abi/RegistrarController'
 
-export const CONTRACT_ADDRESS = '0x50d634E43F5aD7748cf2860760b887655524B593'
+export const CONTRACT_ADDRESS = '0x93D6861691E658d0797a982E652Fc3015314913d'
 
 console.log(CONTRACT_ADDRESS)
 console.log(controller.events.NameRegistered.topic)
 export const processor = new EvmBatchProcessor()
     // .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
     .setRpcEndpoint({
-        url: 'https://koi-rpc.darwinia.network',
+        url: 'https://crab-rpc.darwinia.network',
         rateLimit: 10
     })
-    .setFinalityConfirmation(35)
+    .setFinalityConfirmation(10)
     .setFields({
         log: {
             topics: true,
@@ -30,7 +30,7 @@ export const processor = new EvmBatchProcessor()
         },
     })
     .addLog({
-        range: {from: 1800370},
+        range: {from: 5438979},
         address: [CONTRACT_ADDRESS],
         topic0: [
             controller.events.NameRegistered.topic,
