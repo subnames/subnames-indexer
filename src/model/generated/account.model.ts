@@ -11,4 +11,7 @@ export class Account {
      */
     @PrimaryColumn_()
     id!: string
+
+    @Column_("text", {nullable: false})
+    node!: string
 }

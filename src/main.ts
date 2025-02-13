@@ -6,6 +6,8 @@ import * as registrar from './abi/BaseRegistrar'
 import {Account, NameRegistered, Transfer, NameRenewed, Subname} from './model'
 import {Block, CONTROLLER_ADDRESS, REGISTRAR_ADDRESS, Context, Log, Transaction, processor} from './processor'
 import { ethers, keccak256 } from "ethers";
+import hexAddress from "./sha3";
+import { keccak256 as viemKeccak256, encodePacked } from "viem"
 
 processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
     let nameRegisteredList: NameRegisteredEvent[] = []
@@ -147,6 +149,16 @@ function getAccount(m: Map<string, Account>, id: string): Account {
     if (acc == null) {
         acc = new Account()
         acc.id = id
+        let node = viemKeccak256(
+          encodePacked(
+            ["bytes32", "bytes32"],
+            [
+              "0x8b4150cc3554db98a2f60cb8c5a4cc48659d17a536ff9fe540be66d3307ee7a7",
+              hexAddress(id),
+            ],
+          ),
+        )
+        acc.node = node
         m.set(id, acc)
     }
     return acc
