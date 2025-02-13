@@ -20,10 +20,21 @@ export class Subname {
     @Column_("bytea", {nullable: false})
     label!: Uint8Array
 
+    @Column_("bytea", {nullable: false})
+    node!: Uint8Array
+
     @Index_()
     @ManyToOne_(() => Account, {nullable: true})
     owner!: Account
 
     @Column_("numeric", {transformer: marshal.bigintTransformer, nullable: false})
     expires!: bigint
+
+    @Index_()
+    @ManyToOne_(() => Account, {nullable: true})
+    resolvedTo!: Account
+
+    @Index_()
+    @ManyToOne_(() => Account, {nullable: true})
+    reverseResolvedFrom!: Account | undefined | null
 }

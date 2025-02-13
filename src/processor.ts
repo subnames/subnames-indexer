@@ -42,6 +42,7 @@ export const processor = new EvmBatchProcessor()
             controller.events.NameRegistered.topic,
             controller.events.NameRenewed.topic,
             registrar.events.Transfer.topic,
+            l2Resolver.events.AddressChanged.topic,
             l2Resolver.events.NameChanged.topic,
         ],
         transaction: true,

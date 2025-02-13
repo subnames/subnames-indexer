@@ -3,8 +3,9 @@ import {assertNotNull} from '@subsquid/evm-processor'
 import {TypeormDatabase} from '@subsquid/typeorm-store'
 import * as controller from './abi/RegistrarController'
 import * as registrar from './abi/BaseRegistrar'
-import {Account, NameRegistered, Transfer, NameRenewed, Subname} from './model'
-import {Block, CONTROLLER_ADDRESS, REGISTRAR_ADDRESS, Context, Log, Transaction, processor} from './processor'
+import * as l2Resolver from './abi/L2Resolver'
+import {Account, NameRegistered, Transfer, NameRenewed, Subname, AddressChanged} from './model'
+import {Block, CONTROLLER_ADDRESS, REGISTRAR_ADDRESS, L2_RESOLVER_ADDRESS, Context, Log, Transaction, processor} from './processor'
 import { ethers, keccak256 } from "ethers";
 import hexAddress from "./sha3";
 import { keccak256 as viemKeccak256, encodePacked } from "viem"
@@ -13,10 +14,14 @@ processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
     let nameRegisteredList: NameRegisteredEvent[] = []
     let transferList: TransferEvent[] = []
     let nameRenewedList: NameRenewedEvent[] = []
+    let addressChangedList: AddressChangedEvent[] = []
+    // let nameChangedList: NameChangedEvent[] = []
 
     const nameRegisteredTopic = controller.events.NameRegistered.topic.toLowerCase()
     const nameRenewedTopic = controller.events.NameRenewed.topic.toLowerCase()
     const transferTopic = registrar.events.Transfer.topic.toLowerCase()
+    const addressChangedTopic = l2Resolver.events.AddressChanged.topic.toLowerCase()
+    const nameChangedTopic = l2Resolver.events.NameChanged.topic.toLowerCase()
 
     for (let block of ctx.blocks) {
         // console.log(`Processing block ${block.header.height}`)
@@ -37,6 +42,14 @@ processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
                         transferList.push(transfer)
                     }
                 }
+            } else if (address == L2_RESOLVER_ADDRESS) {
+                if (topic0 === addressChangedTopic) {
+                    const addressChanged = getAddressChanged(ctx, log)
+                    addressChangedList.push(addressChanged)
+                } else if (topic0 === nameChangedTopic) {
+                    // const nameChanged = getNameChanged(ctx, log)
+                    console.log("nameChanged")
+                }
             }
         }
     }
@@ -45,6 +58,7 @@ processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
         processNameRegistered(ctx, nameRegisteredList),
         processTransfer(ctx, transferList),
         processNameRenewed(ctx, nameRenewedList),
+        processAddressChanged(ctx, addressChangedList),
     ])
 })
 
@@ -74,6 +88,75 @@ interface NameRenewedEvent {
     name: string
     label: string
     expires: bigint
+}
+
+interface AddressChangedEvent {
+    id: string
+    block: Block
+    transaction: Transaction
+    node: string
+    coinType: bigint
+    newAddress: string
+}
+
+function getAddressChanged(ctx: Context, log: Log): AddressChangedEvent {
+    let event = l2Resolver.events.AddressChanged.decode(log)
+
+    let transaction = assertNotNull(log.transaction, `Missing transaction`)
+
+    ctx.log.debug({block: log.block, txHash: transaction.hash}, `Address changed ${event.node} to ${event.newAddress}`)
+
+    return {
+        id: log.id,
+        block: log.block,
+        transaction,
+        node: event.node,
+        coinType: event.coinType,
+        newAddress: event.newAddress,
+    }
+}
+
+async function processAddressChanged(ctx: Context, addressChangedData: AddressChangedEvent[]) {
+    let accountIds = new Set<string>()
+    for (let t of addressChangedData) {
+        accountIds.add(t.newAddress)
+    }
+
+    let accounts = await ctx.store
+        .findBy(Account, {id: In([...accountIds])})
+        .then((q) => new Map(q.map((i) => [i.id, i])))
+
+    let addressChangedList: AddressChanged[] = []
+
+    for (let t of addressChangedData) {
+        let {id, block, transaction, node, coinType, newAddress} = t
+
+        const nodeBytes = Buffer.from(node.replace('0x', ''), 'hex')
+        addressChangedList.push(
+            new AddressChanged({
+                id,
+                blockNumber: block.height,
+                timestamp: new Date(block.timestamp),
+                txHash: transaction.hash,
+                node: nodeBytes,
+                coinType,
+                newAddress,
+            })
+        )
+
+        // Update subname resolvedTo
+        let account = getAccount(accounts, newAddress.substring(0, 42))
+        let subname = await ctx.store.findOne(Subname, {where: {node: nodeBytes}})
+        if (subname) {
+            subname.resolvedTo = account
+            await ctx.store.upsert(subname)
+        } else {
+            throw new Error(`Subname not found for node ${node}`)
+        }
+    }
+
+    await ctx.store.upsert(Array.from(accounts.values()))
+    await ctx.store.upsert(addressChangedList)
 }
 
 function getNameRegistered(ctx: Context, log: Log): NameRegisteredEvent {
@@ -127,14 +210,17 @@ async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegis
             })
         )
 
+        const node = ethers.namehash(`${name}.darwinia.eth`)
+        const nodeBytes = Buffer.from(node.replace('0x', ''), 'hex')
         subnameList.push(
             new Subname({
                 id,
                 tokenId,
                 name,
                 label: labelBytes,
+                node: nodeBytes,
                 owner: account,
-                expires,
+                expires
             })
         )
     }
@@ -158,7 +244,8 @@ function getAccount(m: Map<string, Account>, id: string): Account {
             ],
           ),
         )
-        acc.node = node
+        let nodeBytes = Buffer.from(node.replace('0x', ''), 'hex')
+        acc.node = nodeBytes
         m.set(id, acc)
     }
     return acc

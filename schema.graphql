@@ -1,7 +1,7 @@
 type Account @entity {
   "Account address"
   id: ID!
-  node: String!
+  node: Bytes!
 }
 
 type NameRegistered @entity {
@@ -25,6 +25,16 @@ type NameRenewed @entity {
   expires: BigInt!
 }
 
+type AddressChanged @entity {
+  id: ID!
+  blockNumber: Int!
+  timestamp: DateTime!
+  txHash: String!
+  node: Bytes!
+  coinType: BigInt!
+  newAddress: String!
+}
+
 type Transfer @entity {
   id: ID!
   blockNumber: Int!
@@ -40,6 +50,9 @@ type Subname @entity {
   tokenId: BigInt!
   name: String!
   label: Bytes!
+  node: Bytes!
   owner: Account!
   expires: BigInt!
+  resolvedTo: Account!
+  reverseResolvedFrom: Account
 }
