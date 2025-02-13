@@ -5,7 +5,7 @@ import * as controller from './abi/RegistrarController'
 import * as registrar from './abi/BaseRegistrar'
 import {Account, NameRegistered, Transfer, NameRenewed, Subname} from './model'
 import {Block, CONTROLLER_ADDRESS, REGISTRAR_ADDRESS, Context, Log, Transaction, processor} from './processor'
-import { keccak256 } from "ethers";
+import { ethers, keccak256 } from "ethers";
 
 processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
     let nameRegisteredList: NameRegisteredEvent[] = []
@@ -104,7 +104,7 @@ async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegis
 
     for (let t of nameRegisteredData) {
         let {id, block, transaction, name, label, owner, expires} = t
-        let tokenId = BigInt(keccak256(name))
+        let tokenId = BigInt(keccak256(ethers.toUtf8Bytes(name)))
 
         let account = getAccount(accounts, owner)
 
