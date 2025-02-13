@@ -30,7 +30,10 @@ processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
                 }
             } else if (address == REGISTRAR_ADDRESS) {
                 if (topic0 === transferTopic) {
-                    transferList.push(getTransfer(ctx, log))
+                    const transfer = getTransfer(ctx, log)
+                    if (transfer.from != "0x0000000000000000000000000000000000000000") {
+                        transferList.push(transfer)
+                    }
                 }
             }
         }
