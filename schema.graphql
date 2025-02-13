@@ -2,6 +2,7 @@ type Account @entity {
   "Account address"
   id: ID!
   node: Bytes!
+  primarySubname: Subname
 }
 
 type NameRegistered @entity {
@@ -33,6 +34,15 @@ type AddressChanged @entity {
   node: Bytes!
   coinType: BigInt!
   newAddress: String!
+}
+
+type NameChanged @entity {
+  id: ID!
+  blockNumber: Int!
+  timestamp: DateTime!
+  txHash: String!
+  node: Bytes!
+  name: String!
 }
 
 type Transfer @entity {

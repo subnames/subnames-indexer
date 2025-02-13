@@ -1,0 +1,51 @@
+module.exports = class Data1739436867324 {
+    name = 'Data1739436867324'
+
+    async up(db) {
+        await db.query(`CREATE TABLE "subname" ("id" character varying NOT NULL, "token_id" numeric NOT NULL, "name" text NOT NULL, "label" bytea NOT NULL, "node" bytea NOT NULL, "expires" numeric NOT NULL, "owner_id" character varying, "resolved_to_id" character varying, "reverse_resolved_from_id" character varying, CONSTRAINT "PK_7d4ea98ca2a363d17fe0b5cfb2e" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE INDEX "IDX_bafd15775867888bd5aa336ca4" ON "subname" ("owner_id") `)
+        await db.query(`CREATE INDEX "IDX_fe8189b453dd60cb025739a23c" ON "subname" ("resolved_to_id") `)
+        await db.query(`CREATE INDEX "IDX_501814901c7ea381163cb1022a" ON "subname" ("reverse_resolved_from_id") `)
+        await db.query(`CREATE TABLE "account" ("id" character varying NOT NULL, "node" bytea NOT NULL, "primary_subname_id" character varying, CONSTRAINT "PK_54115ee388cdb6d86bb4bf5b2ea" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE INDEX "IDX_ba68fe266060ececb22022ed1d" ON "account" ("primary_subname_id") `)
+        await db.query(`CREATE TABLE "name_registered" ("id" character varying NOT NULL, "block_number" integer NOT NULL, "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, "tx_hash" text NOT NULL, "name" text NOT NULL, "label" bytea NOT NULL, "expires" numeric NOT NULL, "owner_id" character varying, CONSTRAINT "PK_f4dbc3044737871329dc4871ee9" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE INDEX "IDX_c054607805817b7ec00148f7bb" ON "name_registered" ("owner_id") `)
+        await db.query(`CREATE TABLE "name_renewed" ("id" character varying NOT NULL, "block_number" integer NOT NULL, "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, "tx_hash" text NOT NULL, "name" text NOT NULL, "label" bytea NOT NULL, "expires" numeric NOT NULL, CONSTRAINT "PK_2b4e60a0ad8136512a71c8be2a3" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "address_changed" ("id" character varying NOT NULL, "block_number" integer NOT NULL, "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, "tx_hash" text NOT NULL, "node" bytea NOT NULL, "coin_type" numeric NOT NULL, "new_address" text NOT NULL, CONSTRAINT "PK_c0a8d3b9a01d91b66aac8467652" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "name_changed" ("id" character varying NOT NULL, "block_number" integer NOT NULL, "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, "tx_hash" text NOT NULL, "node" bytea NOT NULL, "name" text NOT NULL, CONSTRAINT "PK_9ac4044cae8b7fd0100f30ef282" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "transfer" ("id" character varying NOT NULL, "block_number" integer NOT NULL, "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL, "tx_hash" text NOT NULL, "token_id" numeric NOT NULL, "from_id" character varying, "to_id" character varying, CONSTRAINT "PK_fd9ddbdd49a17afcbe014401295" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE INDEX "IDX_76bdfed1a7eb27c6d8ecbb7349" ON "transfer" ("from_id") `)
+        await db.query(`CREATE INDEX "IDX_0751309c66e97eac9ef1149362" ON "transfer" ("to_id") `)
+        await db.query(`ALTER TABLE "subname" ADD CONSTRAINT "FK_bafd15775867888bd5aa336ca41" FOREIGN KEY ("owner_id") REFERENCES "account"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`)
+        await db.query(`ALTER TABLE "subname" ADD CONSTRAINT "FK_fe8189b453dd60cb025739a23cd" FOREIGN KEY ("resolved_to_id") REFERENCES "account"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`)
+        await db.query(`ALTER TABLE "subname" ADD CONSTRAINT "FK_501814901c7ea381163cb1022a0" FOREIGN KEY ("reverse_resolved_from_id") REFERENCES "account"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`)
+        await db.query(`ALTER TABLE "account" ADD CONSTRAINT "FK_ba68fe266060ececb22022ed1dd" FOREIGN KEY ("primary_subname_id") REFERENCES "subname"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`)
+        await db.query(`ALTER TABLE "name_registered" ADD CONSTRAINT "FK_c054607805817b7ec00148f7bbf" FOREIGN KEY ("owner_id") REFERENCES "account"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`)
+        await db.query(`ALTER TABLE "transfer" ADD CONSTRAINT "FK_76bdfed1a7eb27c6d8ecbb73496" FOREIGN KEY ("from_id") REFERENCES "account"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`)
+        await db.query(`ALTER TABLE "transfer" ADD CONSTRAINT "FK_0751309c66e97eac9ef11493623" FOREIGN KEY ("to_id") REFERENCES "account"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`)
+    }
+
+    async down(db) {
+        await db.query(`DROP TABLE "subname"`)
+        await db.query(`DROP INDEX "public"."IDX_bafd15775867888bd5aa336ca4"`)
+        await db.query(`DROP INDEX "public"."IDX_fe8189b453dd60cb025739a23c"`)
+        await db.query(`DROP INDEX "public"."IDX_501814901c7ea381163cb1022a"`)
+        await db.query(`DROP TABLE "account"`)
+        await db.query(`DROP INDEX "public"."IDX_ba68fe266060ececb22022ed1d"`)
+        await db.query(`DROP TABLE "name_registered"`)
+        await db.query(`DROP INDEX "public"."IDX_c054607805817b7ec00148f7bb"`)
+        await db.query(`DROP TABLE "name_renewed"`)
+        await db.query(`DROP TABLE "address_changed"`)
+        await db.query(`DROP TABLE "name_changed"`)
+        await db.query(`DROP TABLE "transfer"`)
+        await db.query(`DROP INDEX "public"."IDX_76bdfed1a7eb27c6d8ecbb7349"`)
+        await db.query(`DROP INDEX "public"."IDX_0751309c66e97eac9ef1149362"`)
+        await db.query(`ALTER TABLE "subname" DROP CONSTRAINT "FK_bafd15775867888bd5aa336ca41"`)
+        await db.query(`ALTER TABLE "subname" DROP CONSTRAINT "FK_fe8189b453dd60cb025739a23cd"`)
+        await db.query(`ALTER TABLE "subname" DROP CONSTRAINT "FK_501814901c7ea381163cb1022a0"`)
+        await db.query(`ALTER TABLE "account" DROP CONSTRAINT "FK_ba68fe266060ececb22022ed1dd"`)
+        await db.query(`ALTER TABLE "name_registered" DROP CONSTRAINT "FK_c054607805817b7ec00148f7bbf"`)
+        await db.query(`ALTER TABLE "transfer" DROP CONSTRAINT "FK_76bdfed1a7eb27c6d8ecbb73496"`)
+        await db.query(`ALTER TABLE "transfer" DROP CONSTRAINT "FK_0751309c66e97eac9ef11493623"`)
+    }
+}

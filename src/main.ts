@@ -4,7 +4,7 @@ import {TypeormDatabase} from '@subsquid/typeorm-store'
 import * as controller from './abi/RegistrarController'
 import * as registrar from './abi/BaseRegistrar'
 import * as l2Resolver from './abi/L2Resolver'
-import {Account, NameRegistered, Transfer, NameRenewed, Subname, AddressChanged} from './model'
+import {Account, NameRegistered, Transfer, NameRenewed, Subname, AddressChanged, NameChanged} from './model'
 import {Block, CONTROLLER_ADDRESS, REGISTRAR_ADDRESS, L2_RESOLVER_ADDRESS, Context, Log, Transaction, processor} from './processor'
 import { ethers, keccak256 } from "ethers";
 import hexAddress from "./sha3";
@@ -15,7 +15,7 @@ processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
     let transferList: TransferEvent[] = []
     let nameRenewedList: NameRenewedEvent[] = []
     let addressChangedList: AddressChangedEvent[] = []
-    // let nameChangedList: NameChangedEvent[] = []
+    let nameChangedList: NameChangedEvent[] = []
 
     const nameRegisteredTopic = controller.events.NameRegistered.topic.toLowerCase()
     const nameRenewedTopic = controller.events.NameRenewed.topic.toLowerCase()
@@ -47,19 +47,18 @@ processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
                     const addressChanged = getAddressChanged(ctx, log)
                     addressChangedList.push(addressChanged)
                 } else if (topic0 === nameChangedTopic) {
-                    // const nameChanged = getNameChanged(ctx, log)
-                    console.log("nameChanged")
+                    const nameChanged = getNameChanged(ctx, log)
+                    nameChangedList.push(nameChanged)
                 }
             }
         }
     }
 
-    await Promise.all([
-        processNameRegistered(ctx, nameRegisteredList),
-        processTransfer(ctx, transferList),
-        processNameRenewed(ctx, nameRenewedList),
-        processAddressChanged(ctx, addressChangedList),
-    ])
+    await processNameRegistered(ctx, nameRegisteredList)
+    await processNameRenewed(ctx, nameRenewedList)
+    // await processTransfer(ctx, transferList)
+    await processAddressChanged(ctx, addressChangedList)
+    await processNameChanged(ctx, nameChangedList)
 })
 
 interface NameRegisteredEvent {
@@ -99,6 +98,75 @@ interface AddressChangedEvent {
     newAddress: string
 }
 
+interface NameChangedEvent {
+    id: string
+    block: Block
+    transaction: Transaction
+    node: string
+    name: string
+}
+
+function getNameChanged(ctx: Context, log: Log): NameChangedEvent {
+    let event = l2Resolver.events.NameChanged.decode(log)
+
+    let transaction = assertNotNull(log.transaction, `Missing transaction`)
+
+    ctx.log.debug({block: log.block, txHash: transaction.hash}, `Name changed ${event.node} to ${event.name}`)
+
+    return {
+        id: log.id,
+        block: log.block,
+        transaction,
+        node: event.node,
+        name: event.name,
+    }
+}
+
+async function processNameChanged(ctx: Context, nameChangedData: NameChangedEvent[]) {
+    if (nameChangedData.length > 0) console.log("processNameChanged")
+    let nameChangedList: NameChanged[] = []
+
+    for (let t of nameChangedData) {
+        let {id, block, transaction, node, name} = t
+
+        const nodeBytes = Buffer.from(node.replace('0x', ''), 'hex')
+        nameChangedList.push(
+            new NameChanged({
+                id,
+                blockNumber: block.height,
+                timestamp: new Date(block.timestamp),
+                txHash: transaction.hash,
+                node: nodeBytes,
+                name: name,
+            })
+        )
+
+        // find account by reverse node
+        const account = await getAccount(ctx, transaction.from)
+        console.log("processNameChanged: account =", account)
+        if (!account) {
+            throw new Error(`processNameChanged: Account not found for reverse node ${nodeBytes}`)
+        }
+
+        console.log("processNameChanged: name =", name)
+        console.log("processNameChanged: name == \"\"", name == "")
+        if (name == "") {
+            account.primarySubname = null
+            await ctx.store.upsert(account)
+        } else {
+            let subname = await ctx.store.findOne(Subname, {where: {name: name.split('.')[0]}})
+            if (subname) {
+                subname.reverseResolvedFrom = account
+                account.primarySubname = subname
+                await ctx.store.upsert(subname)
+                await ctx.store.upsert(account)
+            }
+        }
+    }
+
+    await ctx.store.upsert(nameChangedList)
+}
+
 function getAddressChanged(ctx: Context, log: Log): AddressChangedEvent {
     let event = l2Resolver.events.AddressChanged.decode(log)
 
@@ -117,15 +185,7 @@ function getAddressChanged(ctx: Context, log: Log): AddressChangedEvent {
 }
 
 async function processAddressChanged(ctx: Context, addressChangedData: AddressChangedEvent[]) {
-    let accountIds = new Set<string>()
-    for (let t of addressChangedData) {
-        accountIds.add(t.newAddress)
-    }
-
-    let accounts = await ctx.store
-        .findBy(Account, {id: In([...accountIds])})
-        .then((q) => new Map(q.map((i) => [i.id, i])))
-
+    if (addressChangedData.length > 0) console.log("processAddressChanged")
     let addressChangedList: AddressChanged[] = []
 
     for (let t of addressChangedData) {
@@ -145,17 +205,18 @@ async function processAddressChanged(ctx: Context, addressChangedData: AddressCh
         )
 
         // Update subname resolvedTo
-        let account = getAccount(accounts, newAddress.substring(0, 42))
+        let account = await getAccount(ctx, newAddress.substring(0, 42))
+        console.log("processAddressChanged: account =", account)
         let subname = await ctx.store.findOne(Subname, {where: {node: nodeBytes}})
         if (subname) {
+            console.log("update resolvedTo of subname")
             subname.resolvedTo = account
             await ctx.store.upsert(subname)
         } else {
-            throw new Error(`Subname not found for node ${node}`)
+           console.log(`Subname not found for node ${node}, skipping...`)
         }
     }
 
-    await ctx.store.upsert(Array.from(accounts.values()))
     await ctx.store.upsert(addressChangedList)
 }
 
@@ -178,15 +239,6 @@ function getNameRegistered(ctx: Context, log: Log): NameRegisteredEvent {
 }
 
 async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegisteredEvent[]) {
-    let accountIds = new Set<string>()
-    for (let t of nameRegisteredData) {
-        accountIds.add(t.owner)
-    }
-
-    let accounts = await ctx.store
-        .findBy(Account, {id: In([...accountIds])})
-        .then((q) => new Map(q.map((i) => [i.id, i])))
-
     let nameRegisteredList: NameRegistered[] = []
     let subnameList: Subname[] = []
 
@@ -194,7 +246,7 @@ async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegis
         let {id, block, transaction, name, label, owner, expires} = t
         let tokenId = BigInt(keccak256(ethers.toUtf8Bytes(name)))
 
-        let account = getAccount(accounts, owner)
+        let account = await getAccount(ctx, owner)
 
         let labelBytes = Buffer.from(label.replace('0x', ''), 'hex')
         nameRegisteredList.push(
@@ -220,34 +272,42 @@ async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegis
                 label: labelBytes,
                 node: nodeBytes,
                 owner: account,
-                expires
+                expires,
+                resolvedTo: account,
+                reverseResolvedFrom: account,
             })
         )
     }
 
-    await ctx.store.upsert(Array.from(accounts.values()))
     await ctx.store.upsert(nameRegisteredList)
     await ctx.store.upsert(subnameList)
 }
 
-function getAccount(m: Map<string, Account>, id: string): Account {
-    let acc = m.get(id)
-    if (acc == null) {
+function calcReverseNode(address: string) {
+    let node = viemKeccak256(
+        encodePacked(
+        ["bytes32", "bytes32"],
+        [
+            "0x8b4150cc3554db98a2f60cb8c5a4cc48659d17a536ff9fe540be66d3307ee7a7",
+            hexAddress(address),
+        ],
+        ),
+    )
+    return Buffer.from(node.replace('0x', ''), 'hex')
+}
+
+async function getAccount(ctx: Context, address: string) {
+    // load from store first
+    let acc = await ctx.store.findOneBy(Account, {id: address})
+
+    if (acc == undefined) {
         acc = new Account()
-        acc.id = id
-        let node = viemKeccak256(
-          encodePacked(
-            ["bytes32", "bytes32"],
-            [
-              "0x8b4150cc3554db98a2f60cb8c5a4cc48659d17a536ff9fe540be66d3307ee7a7",
-              hexAddress(id),
-            ],
-          ),
-        )
-        let nodeBytes = Buffer.from(node.replace('0x', ''), 'hex')
-        acc.node = nodeBytes
-        m.set(id, acc)
+        acc.id = address
+        acc.node = calcReverseNode(address)
+        console.log("save account", acc)
+        await ctx.store.upsert(acc)
     }
+
     return acc
 }
 
@@ -267,23 +327,13 @@ function getTransfer(ctx: Context, log: Log): TransferEvent {
 }
 
 async function processTransfer(ctx: Context, transferData: TransferEvent[]) {
-    let accountIds = new Set<string>()
-    for (let t of transferData) {
-        if (!accountIds.has(t.from)) accountIds.add(t.from)
-        if (!accountIds.has(t.to)) accountIds.add(t.to)
-    }
-
-    let accounts = await ctx.store
-        .findBy(Account, {id: In([...accountIds])})
-        .then((q) => new Map(q.map((i) => [i.id, i])))
-
     let transferList: Transfer[] = []
 
     for (let t of transferData) {
         let {id, block, transaction, from, to, tokenId} = t
 
-        let fromAccount = getAccount(accounts, from)
-        let toAccount = getAccount(accounts, to)
+        let fromAccount = await getAccount(ctx, from)
+        let toAccount = await getAccount(ctx, to)
 
         transferList.push(
             new Transfer({
@@ -298,7 +348,6 @@ async function processTransfer(ctx: Context, transferData: TransferEvent[]) {
         )
     }
 
-    await ctx.store.upsert(Array.from(accounts.values()))
     await ctx.store.upsert(transferList)
 
     for (let t of transferData) {
@@ -307,7 +356,7 @@ async function processTransfer(ctx: Context, transferData: TransferEvent[]) {
         // Update subname owner. query subname first
         let subname = await ctx.store.findOne(Subname, {where: {tokenId: tokenId}})
         if (subname) {
-            subname.owner = getAccount(accounts, to)
+            subname.owner = await getAccount(ctx, to)
             await ctx.store.upsert(subname)
         } else {
             throw new Error(`Subname not found for tokenId ${tokenId}`)
