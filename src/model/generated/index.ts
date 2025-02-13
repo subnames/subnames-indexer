@@ -1,5 +1,5 @@
 export * from "./account.model"
 export * from "./nameRegistered.model"
-export * from "./ownershipTransferred.model"
 export * from "./nameRenewed.model"
+export * from "./transfer.model"
 export * from "./subname.model"

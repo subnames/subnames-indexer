@@ -1,9 +1,10 @@
 import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, ManyToOne as ManyToOne_, Index as Index_} from "typeorm"
+import * as marshal from "./marshal"
 import {Account} from "./account.model"
 
 @Entity_()
-export class OwnershipTransferred {
-    constructor(props?: Partial<OwnershipTransferred>) {
+export class Transfer {
+    constructor(props?: Partial<Transfer>) {
         Object.assign(this, props)
     }
 
@@ -21,9 +22,12 @@ export class OwnershipTransferred {
 
     @Index_()
     @ManyToOne_(() => Account, {nullable: true})
-    oldOwner!: Account
+    from!: Account
 
     @Index_()
     @ManyToOne_(() => Account, {nullable: true})
-    newOwner!: Account
+    to!: Account
+
+    @Column_("numeric", {transformer: marshal.bigintTransformer, nullable: false})
+    tokenId!: bigint
 }

@@ -11,6 +11,9 @@ export class Subname {
     @PrimaryColumn_()
     id!: string
 
+    @Column_("numeric", {transformer: marshal.bigintTransformer, nullable: false})
+    tokenId!: bigint
+
     @Column_("text", {nullable: false})
     name!: string
 

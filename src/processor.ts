@@ -8,11 +8,14 @@ import {
 } from '@subsquid/evm-processor'
 import {Store} from '@subsquid/typeorm-store'
 import * as controller from './abi/RegistrarController'
+import * as registrar from './abi/BaseRegistrar'
 
-export const CONTRACT_ADDRESS = '0x93D6861691E658d0797a982E652Fc3015314913d'
+export const CONTROLLER_ADDRESS = '0x017D8C573a54cc43e2D23EC8Fa756D92777c3217'.toLowerCase()
+export const REGISTRAR_ADDRESS = '0xAFb5F12C5F379431253159fae464572999E78485'.toLowerCase()
 
-console.log(CONTRACT_ADDRESS)
-console.log(controller.events.NameRegistered.topic)
+console.log(`Controller address: ${CONTROLLER_ADDRESS}`)
+console.log(`Registrar address: ${REGISTRAR_ADDRESS}`)
+
 export const processor = new EvmBatchProcessor()
     // .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
     .setRpcEndpoint({
@@ -31,11 +34,11 @@ export const processor = new EvmBatchProcessor()
     })
     .addLog({
         range: {from: 5438979},
-        address: [CONTRACT_ADDRESS],
+        address: [CONTROLLER_ADDRESS, REGISTRAR_ADDRESS],
         topic0: [
             controller.events.NameRegistered.topic,
-            controller.events.OwnershipTransferred.topic,
             controller.events.NameRenewed.topic,
+            registrar.events.Transfer.topic,
         ],
         transaction: true,
     })

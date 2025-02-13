@@ -2,27 +2,35 @@ import {In} from 'typeorm'
 import {assertNotNull} from '@subsquid/evm-processor'
 import {TypeormDatabase} from '@subsquid/typeorm-store'
 import * as controller from './abi/RegistrarController'
-import {Account, NameRegistered, OwnershipTransferred, NameRenewed, Subname} from './model'
-import {Block, CONTRACT_ADDRESS, Context, Log, Transaction, processor} from './processor'
+import * as registrar from './abi/BaseRegistrar'
+import {Account, NameRegistered, Transfer, NameRenewed, Subname} from './model'
+import {Block, CONTROLLER_ADDRESS, REGISTRAR_ADDRESS, Context, Log, Transaction, processor} from './processor'
+import { keccak256 } from "ethers";
 
 processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
     let nameRegisteredList: NameRegisteredEvent[] = []
-    let ownershipTransferredList: OwnershipTransferredEvent[] = []
+    let transferList: TransferEvent[] = []
     let nameRenewedList: NameRenewedEvent[] = []
+
+    const nameRegisteredTopic = controller.events.NameRegistered.topic.toLowerCase()
+    const nameRenewedTopic = controller.events.NameRenewed.topic.toLowerCase()
+    const transferTopic = registrar.events.Transfer.topic.toLowerCase()
 
     for (let block of ctx.blocks) {
         // console.log(`Processing block ${block.header.height}`)
         for (let log of block.logs) {
-            if (log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()) {
-                const topic = log.topics[0].toLowerCase()
-                // console.log(`Processing topic ${topic}`)
-                if (topic === controller.events.NameRegistered.topic.toLowerCase()) {
+            const address = log.address.toLowerCase()
+            const topic0 = log.topics[0].toLowerCase()
+
+            if (address == CONTROLLER_ADDRESS) {
+                if (topic0 === nameRegisteredTopic) {
                     nameRegisteredList.push(getNameRegistered(ctx, log))
-                } else if (topic === controller.events.OwnershipTransferred.topic.toLowerCase()) {
-                    ownershipTransferredList.push(getOwnershipTransferred(ctx, log))
-                } else if (topic === controller.events.NameRenewed.topic.toLowerCase()) {
-                    console.log('NameRenewed')
+                } else if (topic0 === nameRenewedTopic) {
                     nameRenewedList.push(getNameRenewed(ctx, log))
+                }
+            } else if (address == REGISTRAR_ADDRESS) {
+                if (topic0 === transferTopic) {
+                    transferList.push(getTransfer(ctx, log))
                 }
             }
         }
@@ -30,7 +38,7 @@ processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
 
     await Promise.all([
         processNameRegistered(ctx, nameRegisteredList),
-        processOwnershipTransferred(ctx, ownershipTransferredList),
+        processTransfer(ctx, transferList),
         processNameRenewed(ctx, nameRenewedList),
     ])
 })
@@ -45,12 +53,13 @@ interface NameRegisteredEvent {
     expires: bigint
 }
 
-interface OwnershipTransferredEvent {
+interface TransferEvent {
     id: string
     block: Block
     transaction: Transaction
-    oldOwner: string
-    newOwner: string
+    from: string
+    to: string
+    tokenId: bigint
 }
 
 interface NameRenewedEvent {
@@ -95,6 +104,7 @@ async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegis
 
     for (let t of nameRegisteredData) {
         let {id, block, transaction, name, label, owner, expires} = t
+        let tokenId = BigInt(keccak256(name))
 
         let account = getAccount(accounts, owner)
 
@@ -115,6 +125,7 @@ async function processNameRegistered(ctx: Context, nameRegisteredData: NameRegis
         subnameList.push(
             new Subname({
                 id,
+                tokenId,
                 name,
                 label: labelBytes,
                 owner: account,
@@ -138,8 +149,8 @@ function getAccount(m: Map<string, Account>, id: string): Account {
     return acc
 }
 
-function getOwnershipTransferred(ctx: Context, log: Log): OwnershipTransferredEvent {
-    let event = controller.events.OwnershipTransferred.decode(log)
+function getTransfer(ctx: Context, log: Log): TransferEvent {
+    let event = registrar.events.Transfer.decode(log)
 
     let transaction = assertNotNull(log.transaction, `Missing transaction`)
 
@@ -147,53 +158,57 @@ function getOwnershipTransferred(ctx: Context, log: Log): OwnershipTransferredEv
         id: log.id,
         block: log.block,
         transaction,
-        oldOwner: event.oldOwner,
-        newOwner: event.newOwner,
+        from: event.from,
+        to: event.to,
+        tokenId: event.id,
     }
 }
 
-async function processOwnershipTransferred(ctx: Context, ownershipTransferredData: OwnershipTransferredEvent[]) {
+async function processTransfer(ctx: Context, transferData: TransferEvent[]) {
     let accountIds = new Set<string>()
-    for (let t of ownershipTransferredData) {
-        if (!accountIds.has(t.oldOwner)) accountIds.add(t.oldOwner)
-        if (!accountIds.has(t.newOwner)) accountIds.add(t.newOwner)
+    for (let t of transferData) {
+        if (!accountIds.has(t.from)) accountIds.add(t.from)
+        if (!accountIds.has(t.to)) accountIds.add(t.to)
     }
 
     let accounts = await ctx.store
         .findBy(Account, {id: In([...accountIds])})
         .then((q) => new Map(q.map((i) => [i.id, i])))
 
-    let ownershipTransferredList: OwnershipTransferred[] = []
+    let transferList: Transfer[] = []
 
-    for (let t of ownershipTransferredData) {
-        let {id, block, transaction, oldOwner, newOwner} = t
+    for (let t of transferData) {
+        let {id, block, transaction, from, to, tokenId} = t
 
-        let oldAccount = getAccount(accounts, oldOwner)
-        let newAccount = getAccount(accounts, newOwner)
+        let fromAccount = getAccount(accounts, from)
+        let toAccount = getAccount(accounts, to)
 
-        ownershipTransferredList.push(
-            new OwnershipTransferred({
+        transferList.push(
+            new Transfer({
                 id,
                 blockNumber: block.height,
                 timestamp: new Date(block.timestamp),
                 txHash: transaction.hash,
-                oldOwner: oldAccount,
-                newOwner: newAccount,
+                from: fromAccount,
+                to: toAccount,
+                tokenId,
             })
         )
     }
 
     await ctx.store.upsert(Array.from(accounts.values()))
-    await ctx.store.upsert(ownershipTransferredList)
+    await ctx.store.upsert(transferList)
 
-    for (let t of ownershipTransferredData) {
-        let {oldOwner, newOwner} = t
+    for (let t of transferData) {
+        let {from, to, tokenId} = t
 
         // Update subname owner. query subname first
-        let subname = await ctx.store.findOne(Subname, {where: {owner: {id: oldOwner}}})
+        let subname = await ctx.store.findOne(Subname, {where: {tokenId: tokenId}})
         if (subname) {
-            subname.owner = getAccount(accounts, newOwner)
+            subname.owner = getAccount(accounts, to)
             await ctx.store.upsert(subname)
+        } else {
+            throw new Error(`Subname not found for tokenId ${tokenId}`)
         }
     }
 }
