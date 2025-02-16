@@ -151,8 +151,12 @@ async function processNameChanged(ctx: Context, nameChangedData: NameChangedEven
         console.log("processNameChanged: name =", name)
         console.log("processNameChanged: name == \"\"", name == "")
         if (name == "") {
-            account.primarySubname = null
-            await ctx.store.upsert(account)
+            // find last subname in AddressChanged events
+            let lastAddressChanged = await ctx.store.findOneOrFail(AddressChanged, {order: {timestamp: 'DESC'}})
+            let oldSubname = await ctx.store.findOneOrFail(Subname, {where: {node: lastAddressChanged.node}})
+            
+            oldSubname.reverseResolvedFrom = null
+            await ctx.store.upsert(oldSubname)
         } else {
             let subname = await ctx.store.findOne(Subname, {where: {name: name.split('.')[0]}})
             if (subname) {
