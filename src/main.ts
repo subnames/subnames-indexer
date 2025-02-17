@@ -9,6 +9,7 @@ import {Block, CONTROLLER_ADDRESS, REGISTRAR_ADDRESS, L2_RESOLVER_ADDRESS, Conte
 import { ethers, keccak256 } from "ethers";
 import hexAddress from "./sha3";
 import { keccak256 as viemKeccak256, encodePacked } from "viem"
+import { Console } from 'console'
 
 processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
     let nameRegisteredList: NameRegisteredEvent[] = []
@@ -151,6 +152,8 @@ async function processNameChanged(ctx: Context, nameChangedData: NameChangedEven
         console.log("processNameChanged: name =", name)
         console.log("processNameChanged: name == \"\"", name == "")
         if (name == "") {
+            // clear primarySubname for `from` account.
+            console.log("processNameChanged: ----")
             // find last subname in AddressChanged events
             let lastAddressChanged = (await ctx.store.find(AddressChanged, {
                 order: { timestamp: 'DESC' },
@@ -158,7 +161,9 @@ async function processNameChanged(ctx: Context, nameChangedData: NameChangedEven
             }))[0]
             let oldSubname = await ctx.store.findOneOrFail(Subname, {where: {node: lastAddressChanged.node}})
             oldSubname.reverseResolvedFrom = null
+            account.primarySubname = null
             await ctx.store.upsert(oldSubname)
+            await ctx.store.upsert(account)
         } else {
             let subname = await ctx.store.findOne(Subname, {where: {name: name.split('.')[0]}})
             if (subname) {
