@@ -144,14 +144,15 @@ async function processNameChanged(ctx: Context, nameChangedData: NameChangedEven
 
         // find account by reverse node
         const account = await getAccount(ctx, transaction.from)
-        console.log("processNameChanged: account =", account)
+        console.log("processNameChanged: account =", account.id)
         if (!account) {
             throw new Error(`processNameChanged: Account not found for reverse node ${nodeBytes}`)
         }
 
-        console.log("processNameChanged: name =", name)
-        console.log("processNameChanged: name == \"\"", name == "")
-        if (name == "") {
+        let newName = name.split('.')[0]
+        console.log("processNameChanged: name =", newName)
+        console.log("processNameChanged: account.primarySubname =", account.primarySubname?.name)
+        if (account.primarySubname && newName == account.primarySubname.name) {
             // clear primarySubname for `from` account.
             console.log("processNameChanged: ----")
             // find last subname in AddressChanged events
@@ -161,11 +162,10 @@ async function processNameChanged(ctx: Context, nameChangedData: NameChangedEven
             }))[0]
             let oldSubname = await ctx.store.findOneOrFail(Subname, {where: {node: lastAddressChanged.node}})
             oldSubname.reverseResolvedFrom = null
-            account.primarySubname = null
             await ctx.store.upsert(oldSubname)
             await ctx.store.upsert(account)
         } else {
-            let subname = await ctx.store.findOne(Subname, {where: {name: name.split('.')[0]}})
+            let subname = await ctx.store.findOne(Subname, {where: {name: newName}})
             if (subname) {
                 subname.reverseResolvedFrom = account
                 account.primarySubname = subname
@@ -309,7 +309,10 @@ function calcReverseNode(address: string) {
 
 async function getAccount(ctx: Context, address: string) {
     // load from store first
-    let acc = await ctx.store.findOneBy(Account, {id: address})
+    let acc = await ctx.store.get(Account, {
+        where: { id: address },
+        relations: { primarySubname: true }
+    })
 
     if (acc == undefined) {
         acc = new Account()
@@ -317,6 +320,8 @@ async function getAccount(ctx: Context, address: string) {
         acc.node = calcReverseNode(address)
         console.log("save account", acc)
         await ctx.store.upsert(acc)
+    } else {
+        console.log("load account", acc)
     }
 
     return acc
