@@ -143,18 +143,18 @@ async function processNameChanged(ctx: Context, nameChangedData: NameChangedEven
         )
 
         // find account by reverse node
-        const account = await getAccount(ctx, transaction.from)
-        console.log("processNameChanged: account =", account.id)
-        if (!account) {
+        const fromAccount = await getAccount(ctx, transaction.from)
+        console.log("processNameChanged: account =", fromAccount.id)
+        if (!fromAccount) {
             throw new Error(`processNameChanged: Account not found for reverse node ${nodeBytes}`)
         }
 
         let newName = name.split('.')[0]
-        console.log("processNameChanged: name =", newName)
-        console.log("processNameChanged: account.primarySubname =", account.primarySubname?.name)
-        if (account.primarySubname && newName == account.primarySubname.name) {
+        console.log("processNameChanged: name ='", newName, "'")
+        console.log("processNameChanged: account.primarySubname =", fromAccount.primarySubname?.name)
+        if (newName == "") {
             // clear primarySubname for `from` account.
-            console.log("processNameChanged: ----")
+            console.log("processNameChanged: clear primarySubname") 
             // find last subname in AddressChanged events
             let lastAddressChanged = (await ctx.store.find(AddressChanged, {
                 order: { timestamp: 'DESC' },
@@ -162,15 +162,16 @@ async function processNameChanged(ctx: Context, nameChangedData: NameChangedEven
             }))[0]
             let oldSubname = await ctx.store.findOneOrFail(Subname, {where: {node: lastAddressChanged.node}})
             oldSubname.reverseResolvedFrom = null
+            fromAccount.primarySubname = null
             await ctx.store.upsert(oldSubname)
-            await ctx.store.upsert(account)
+            await ctx.store.upsert(fromAccount)
         } else {
-            let subname = await ctx.store.findOne(Subname, {where: {name: newName}})
-            if (subname) {
-                subname.reverseResolvedFrom = account
-                account.primarySubname = subname
-                await ctx.store.upsert(subname)
-                await ctx.store.upsert(account)
+            let newSubname = await ctx.store.findOne(Subname, {where: {name: newName}})
+            if (newSubname) {
+                newSubname.reverseResolvedFrom = fromAccount
+                fromAccount.primarySubname = newSubname
+                await ctx.store.upsert(newSubname)
+                await ctx.store.upsert(fromAccount)
             }
         }
     }
