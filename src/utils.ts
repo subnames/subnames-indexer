@@ -31,10 +31,10 @@ export async function getAccount(ctx: Context, address: string): Promise<Account
         acc = new Account()
         acc.id = address
         acc.node = calcReverseNode(address)
-        console.log("save account", acc)
+        console.log("save", acc)
         await ctx.store.upsert(acc)
     } else {
-        console.log("load account", acc)
+        console.log("load", acc)
     }
 
     return acc

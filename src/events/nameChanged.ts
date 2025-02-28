@@ -96,13 +96,15 @@ export async function processNameChanged(ctx: Context, nameChangedData: NameChan
             }
             
             if (oldSubname) {
-                console.log("processNameChanged: Using subname", oldSubname)
+                console.log("processNameChanged: old subname", oldSubname)
+                console.log("processNameChanged: set reverseResolvedFrom to null")
                 oldSubname.reverseResolvedFrom = null
                 await ctx.store.upsert(oldSubname)
             } else {
                 throw new Error("processNameChanged: No AddressChanged events found when clearing name")
             }
             
+            console.log("processNameChanged: clear name for from account", fromAccount.id)
             fromAccount.primarySubname = null
             await ctx.store.upsert(fromAccount)
         } else {
