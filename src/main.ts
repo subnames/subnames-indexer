@@ -154,16 +154,59 @@ async function processNameChanged(ctx: Context, nameChangedData: NameChangedEven
         console.log("processNameChanged: account.primarySubname =", fromAccount.primarySubname?.name)
         if (newName == "") {
             // clear primarySubname for `from` account.
-            console.log("processNameChanged: clear primarySubname") 
-            // find last subname in AddressChanged events
-            let lastAddressChanged = (await ctx.store.find(AddressChanged, {
-                order: { timestamp: 'DESC' },
-                take: 1
-            }))[0]
-            let oldSubname = await ctx.store.findOneOrFail(Subname, {where: {node: lastAddressChanged.node}})
-            oldSubname.reverseResolvedFrom = null
+            console.log("processNameChanged: clear name") 
+
+            // Find the old subname:
+            //   1. find all subnames belongs to `from` account.
+            //      Subname.reverseResolvedFrom.id = fromAccount.id
+            //   2. iterate the subnames, find the 'subname' whose AddressChanged was updated most recently.
+            //      Last AddressChanged event whose AddressChanged.node == nodehash(name)
+            let subnames = await ctx.store.find(Subname, {
+                where: {
+                    reverseResolvedFrom: {
+                        id: fromAccount.id
+                    }
+                },
+                relations: {
+                    reverseResolvedFrom: true
+                }
+            })
+            
+            // If there are no subnames, we can't proceed
+            if (subnames.length === 0) {
+                throw new Error(`processNameChanged: No old subname found for account ${fromAccount.id} when clearing name`)
+            }
+            
+            // Find the most recently updated subname by checking AddressChanged events
+            let oldSubname: Subname | undefined
+            let mostRecentTimestamp: Date | undefined
+            
+            for (const subname of subnames) {
+                // Get the most recent AddressChanged event for this subname
+                const addressChangedEvent = await ctx.store.findOne(AddressChanged, {
+                    where: {
+                        node: subname.node
+                    },
+                    order: {
+                        timestamp: 'DESC'
+                    }
+                })
+                
+                if (addressChangedEvent && (!mostRecentTimestamp || addressChangedEvent.timestamp > mostRecentTimestamp)) {
+                    mostRecentTimestamp = addressChangedEvent.timestamp
+                    oldSubname = subname
+                }
+            }
+            
+            if (oldSubname) {
+                console.log("processNameChanged: Using subname", oldSubname)
+                oldSubname.reverseResolvedFrom = null
+                await ctx.store.upsert(oldSubname)
+            } else {
+                throw new Error("processNameChanged: No AddressChanged events found when clearing name")
+            }
+            
             fromAccount.primarySubname = null
-            await ctx.store.upsert(oldSubname)
             await ctx.store.upsert(fromAccount)
         } else {
             let newSubname = await ctx.store.findOne(Subname, {where: {name: newName}})
