@@ -3,7 +3,7 @@ import { Context, Log } from '../processor'
 import * as controller from '../abi/RegistrarController'
 import { NameRegistered, Subname } from '../model'
 import { NameRegisteredEvent } from './types'
-import { getAccount } from './utils'
+import { getAccount } from '../utils'
 import { ethers, keccak256 } from "ethers"
 
 export function getNameRegistered(ctx: Context, log: Log): NameRegisteredEvent {

@@ -1,4 +1,4 @@
-import { Block, Context, Transaction } from '../processor'
+import { Block, Transaction } from '../processor'
 
 export interface NameRegisteredEvent {
     id: string

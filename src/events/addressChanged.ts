@@ -1,9 +1,9 @@
 import { assertNotNull } from '@subsquid/evm-processor'
 import { Context, Log } from '../processor'
 import * as l2Resolver from '../abi/L2Resolver'
-import { Account, AddressChanged, Subname } from '../model'
+import { AddressChanged, Subname } from '../model'
 import { AddressChangedEvent } from './types'
-import { getAccount } from './utils'
+import { getAccount } from '../utils'
 
 export function getAddressChanged(ctx: Context, log: Log): AddressChangedEvent {
     const event = l2Resolver.events.AddressChanged.decode(log)

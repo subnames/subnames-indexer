@@ -3,7 +3,7 @@ import { Context, Log } from '../processor'
 import * as registrar from '../abi/BaseRegistrar'
 import { Transfer, Subname } from '../model'
 import { TransferEvent } from './types'
-import { getAccount } from './utils'
+import { getAccount } from '../utils'
 
 export function getTransfer(ctx: Context, log: Log): TransferEvent {
     const event = registrar.events.Transfer.decode(log)
