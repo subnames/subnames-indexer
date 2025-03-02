@@ -58,7 +58,7 @@ processor.run(new TypeormDatabase({supportHotBlocks: true}), async (ctx) => {
 
     await processNameRegistered(ctx, nameRegisteredList)
     await processNameRenewed(ctx, nameRenewedList)
-    await processTransfer(ctx, transferList)
     await processAddressChanged(ctx, addressChangedList)
     await processNameChanged(ctx, nameChangedList)
+    await processTransfer(ctx, transferList)
 })
