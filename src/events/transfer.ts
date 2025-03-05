@@ -52,7 +52,9 @@ export async function processTransfer(ctx: Context, transferData: TransferEvent[
         // Update subname owner. query subname first
         let subname = await ctx.store.findOne(Subname, {where: {tokenId: tokenId}})
         if (subname) {
-            subname.owner = await getAccount(ctx, to)
+            let newOwner = await getAccount(ctx, to)
+            subname.owner = newOwner
+            subname.reverseResolvedFrom = newOwner
             await ctx.store.upsert(subname)
         } else {
             throw new Error(`Subname not found for tokenId ${tokenId}`)
