@@ -11,9 +11,9 @@ import * as controller from './abi/RegistrarController'
 import * as registrar from './abi/BaseRegistrar'
 import * as l2Resolver from './abi/L2Resolver'
 
-export const CONTROLLER_ADDRESS = '0x017D8C573a54cc43e2D23EC8Fa756D92777c3217'.toLowerCase()
-export const REGISTRAR_ADDRESS = '0xAFb5F12C5F379431253159fae464572999E78485'.toLowerCase()
-export const L2_RESOLVER_ADDRESS = '0x4b74a4a9b88eF4cE5F9BB42e28e358974251BE63'.toLowerCase()
+export const REGISTRAR_ADDRESS = '0x74b673e8cb4894D926d5c7bD35B472f88E99846'.toLowerCase()
+export const CONTROLLER_ADDRESS = '0xa9EA0B4Fc053c68977F535Ea67e3f0062B363443'.toLowerCase()
+export const L2_RESOLVER_ADDRESS = '0xf761709777A4aa1b71570524869B1876fEafCB2e'.toLowerCase()
 
 console.log(`Controller address: ${CONTROLLER_ADDRESS}`)
 console.log(`Registrar address: ${REGISTRAR_ADDRESS}`)
@@ -35,7 +35,7 @@ export const processor = new EvmBatchProcessor()
         },
     })
     .addLog({
-        range: {from: 5649702},
+        range: {from: 5976526},
         address: [CONTROLLER_ADDRESS, REGISTRAR_ADDRESS, L2_RESOLVER_ADDRESS],
         topic0: [
             controller.events.NameRegistered.topic,
