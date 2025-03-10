@@ -44,6 +44,7 @@ export async function processAddressChanged(ctx: Context, addressChangedData: Ad
         // Update subname resolvedTo
         let newAddressReal = newAddress.substring(0, 42)
         console.log("processAddressChanged: new address", newAddressReal)
+        console.log("processAddressChanged: load new address account:")
         let account = await getAccount(ctx, newAddressReal)
         let subname = await ctx.store.findOne(Subname, {where: {node: nodeBytes}})
         if (subname) {

@@ -40,6 +40,7 @@ export async function processNameChanged(ctx: Context, nameChangedData: NameChan
         )
 
         // find account by reverse node
+        console.log("processNameChanged: load 'from' account:")
         const fromAccount = await getAccount(ctx, transaction.from)
         console.log("processNameChanged: from address:", transaction.from)
         if (!fromAccount) {
@@ -51,7 +52,7 @@ export async function processNameChanged(ctx: Context, nameChangedData: NameChan
         console.log(`processNameChanged: new name: '${newName}'`)
         if (newName == "") {
             // clear primarySubname for `from` account.
-            console.log("processNameChanged: clear name for from account", fromAccount.id)
+            console.log("processNameChanged: clear name for from account:", fromAccount.id)
             fromAccount.primarySubname = null
             await ctx.store.upsert(fromAccount)
         } else {

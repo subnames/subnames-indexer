@@ -54,6 +54,7 @@ export async function processTransfer(ctx: Context, transferData: TransferEvent[
         let subname = await ctx.store.findOne(Subname, {where: {tokenId: tokenId}})
         if (subname) {
             console.log(`processTransfer: found subname ${subname.name} for token id ${tokenId}`)
+            console.log(`processTransfer: load 'to' account:`)
             let newOwner = await getAccount(ctx, to)
             subname.owner = newOwner
             subname.reverseResolvedFrom = newOwner
