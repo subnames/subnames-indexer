@@ -22,7 +22,7 @@ export function getTransfer(ctx: Context, log: Log): TransferEvent {
 }
 
 export async function processTransfer(ctx: Context, transferData: TransferEvent[]) {
-    if (transferData.length > 0) console.log("processTransfer")
+    if (transferData.length > 0) console.log("== processTransfer")
     let transferList: Transfer[] = []
 
     for (let t of transferData) {
@@ -50,8 +50,10 @@ export async function processTransfer(ctx: Context, transferData: TransferEvent[
         let {from, to, tokenId} = t
 
         // Update subname owner. query subname first
+        console.log(`processTransfer: update owner of subname token id ${tokenId} from ${from} to ${to}`)
         let subname = await ctx.store.findOne(Subname, {where: {tokenId: tokenId}})
         if (subname) {
+            console.log(`processTransfer: found subname ${subname.name} for token id ${tokenId}`)
             let newOwner = await getAccount(ctx, to)
             subname.owner = newOwner
             subname.reverseResolvedFrom = newOwner

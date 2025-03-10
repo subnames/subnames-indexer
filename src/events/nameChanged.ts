@@ -21,7 +21,7 @@ export function getNameChanged(ctx: Context, log: Log): NameChangedEvent {
 }
 
 export async function processNameChanged(ctx: Context, nameChangedData: NameChangedEvent[]) {
-    if (nameChangedData.length > 0) console.log("processNameChanged")
+    if (nameChangedData.length > 0) console.log("== processNameChanged")
     let nameChangedList: NameChanged[] = []
 
     for (let t of nameChangedData) {
@@ -41,14 +41,14 @@ export async function processNameChanged(ctx: Context, nameChangedData: NameChan
 
         // find account by reverse node
         const fromAccount = await getAccount(ctx, transaction.from)
-        console.log("processNameChanged: account =", fromAccount.id)
+        console.log("processNameChanged: from address:", transaction.from)
         if (!fromAccount) {
             throw new Error(`processNameChanged: Account not found for reverse node ${nodeBytes}`)
         }
 
         let newName = name.split('.')[0]
-        console.log("processNameChanged: name ='", newName, "'")
-        console.log("processNameChanged: account.primarySubname =", fromAccount.primarySubname?.name)
+        console.log("processNameChanged: from address's primary name:", fromAccount.primarySubname?.name)
+        console.log(`processNameChanged: new name: '${newName}'`)
         if (newName == "") {
             // clear primarySubname for `from` account.
             console.log("processNameChanged: clear name for from account", fromAccount.id)

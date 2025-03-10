@@ -22,7 +22,7 @@ export function getAddressChanged(ctx: Context, log: Log): AddressChangedEvent {
 }
 
 export async function processAddressChanged(ctx: Context, addressChangedData: AddressChangedEvent[]) {
-    if (addressChangedData.length > 0) console.log("processAddressChanged")
+    if (addressChangedData.length > 0) console.log("== processAddressChanged")
     let addressChangedList: AddressChanged[] = []
 
     for (let t of addressChangedData) {
@@ -42,15 +42,16 @@ export async function processAddressChanged(ctx: Context, addressChangedData: Ad
         )
 
         // Update subname resolvedTo
-        let account = await getAccount(ctx, newAddress.substring(0, 42))
-        console.log("processAddressChanged: account =", account)
+        let newAddressReal = newAddress.substring(0, 42)
+        console.log("processAddressChanged: new address", newAddressReal)
+        let account = await getAccount(ctx, newAddressReal)
         let subname = await ctx.store.findOne(Subname, {where: {node: nodeBytes}})
         if (subname) {
-            console.log("update resolvedTo of subname")
+            console.log("processAddressChanged: update resolvedTo of subname:", subname.name, "to", newAddressReal)
             subname.resolvedTo = account
             await ctx.store.upsert(subname)
         } else {
-           console.log(`Subname not found for node ${node}, skipping...`)
+           console.log(`processAddressChanged: subname not found for node ${node}, skipping...`)
         }
     }
 

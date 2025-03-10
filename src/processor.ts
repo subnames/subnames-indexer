@@ -11,7 +11,7 @@ import * as controller from './abi/RegistrarController'
 import * as registrar from './abi/BaseRegistrar'
 import * as l2Resolver from './abi/L2Resolver'
 
-export const REGISTRAR_ADDRESS = '0x74b673e8cb4894D926d5c7bD35B472f88E99846'.toLowerCase()
+export const REGISTRAR_ADDRESS = '0x74b673e8cb4894D926d5c7bD35B472f88E998468'.toLowerCase()
 export const CONTROLLER_ADDRESS = '0xa9EA0B4Fc053c68977F535Ea67e3f0062B363443'.toLowerCase()
 export const L2_RESOLVER_ADDRESS = '0xf761709777A4aa1b71570524869B1876fEafCB2e'.toLowerCase()
 
