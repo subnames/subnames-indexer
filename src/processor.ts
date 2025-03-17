@@ -23,7 +23,7 @@ console.log(`L2 Resolver address: ${L2_RESOLVER_ADDRESS}`)
 export const processor = new EvmBatchProcessor()
     // .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
     .setRpcEndpoint({
-        url: 'http://rpc.darwinia.network',
+        url: 'http://c1.darwinia-rpc.itering.io:9944/',
     })
     .setFinalityConfirmation(10)
     .setFields({
