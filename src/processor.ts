@@ -11,9 +11,10 @@ import * as controller from './abi/RegistrarController'
 import * as registrar from './abi/BaseRegistrar'
 import * as l2Resolver from './abi/L2Resolver'
 
-export const REGISTRAR_ADDRESS = '0x74b673e8cb4894D926d5c7bD35B472f88E998468'.toLowerCase()
-export const CONTROLLER_ADDRESS = '0xa9EA0B4Fc053c68977F535Ea67e3f0062B363443'.toLowerCase()
-export const L2_RESOLVER_ADDRESS = '0xf761709777A4aa1b71570524869B1876fEafCB2e'.toLowerCase()
+export const REGISTRAR_ADDRESS = '0x607A819b8406A5E00F6FC649D67A11DFE2d57efd'.toLowerCase()
+export const CONTROLLER_ADDRESS = '0x0Fc565C7B8dD952281eB3829A3e95067d41363e5'.toLowerCase()
+export const L2_RESOLVER_ADDRESS = '0xB483A20cd7482EBEf468c970953BDdb6faf3c03e'.toLowerCase()
+const FROM = 5935701
 
 console.log(`Controller address: ${CONTROLLER_ADDRESS}`)
 console.log(`Registrar address: ${REGISTRAR_ADDRESS}`)
@@ -22,7 +23,7 @@ console.log(`L2 Resolver address: ${L2_RESOLVER_ADDRESS}`)
 export const processor = new EvmBatchProcessor()
     // .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
     .setRpcEndpoint({
-        url: 'http://c2.crab-rpc.itering.io:9944',
+        url: 'http://rpc.darwinia.network',
     })
     .setFinalityConfirmation(10)
     .setFields({
@@ -35,7 +36,7 @@ export const processor = new EvmBatchProcessor()
         },
     })
     .addLog({
-        range: {from: 5976526},
+        range: {from: FROM},
         address: [CONTROLLER_ADDRESS, REGISTRAR_ADDRESS, L2_RESOLVER_ADDRESS],
         topic0: [
             controller.events.NameRegistered.topic,
